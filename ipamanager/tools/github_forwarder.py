@@ -21,10 +21,10 @@ import socket
 import time
 
 from ipamanager.errors import ManagerError
-from ipamanager.utils import init_logging
+from ipamanager.tools.core import FreeIPAManagerToolCore
 
 
-class GitHubForwarder(object):
+class GitHubForwarder(FreeIPAManagerToolCore):
     """
     Responsible for updating FreeIPA server with changed configuration.
     """
@@ -32,11 +32,9 @@ class GitHubForwarder(object):
         """
         Create a GitHub forwarder object.
         """
+        super(GitHubForwarder, self).__init__()
         self.name = socket.getfqdn().replace('.int.', '.')
         self.msg = 'Entity dump from %s' % self.name
-        self._parse_args()
-        init_logging(self.args.loglevel)
-        self.lg = logging.getLogger(self.__class__.__name__)
         # configure the repo path to be used for all git command calls
         self.git = sh.git.bake(_cwd=self.args.path)
         self.changes = False
