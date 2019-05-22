@@ -69,41 +69,35 @@ class QueryTool(object):
             result.append(resolved)
         return result
 
-    def _build_graph(self, entity_type, name):
+    def _build_graph(self, entity):
         """
         Build membership graph of member entities' nested membership.
         """
         # TODO capture membership path 
-        result = self.graph.get(entity_type, {}).get(name, [])
+        result = self.graph.get(entity, [])
         if result:
-            self.lg.debug('Membership for %s %s already calculated',
-                          entity_type, name)
+            self.lg.debug('Membership for %s already calculated', entity)
             return result
-        self.lg.debug('Calculating membership graph for %s %s',
-                      entity_type, name)
-        entity = self.checker._find_entity(entity_type, entity_name)
-        memberof = entity.data_repo.get('memberOF', dict())
-        target_type = 'hostgroup' if entity_type == 'hostgroup' else 'group'
-        targets = memberof.get(target_type, [])
-        if targets:
+        self.lg.debug('Calculating membership graph for %s %s', entity)
+        memberof = entity.data_repo.get('memberOf', {})
+        for target_type, targets in memberof.iteritems():
             for target in targets:
-                result.append(targets)
-                result.extend(self._build_graph(target_type, target))
-            self.lg.debug('Found %d target entities for %s %s',
-                          len(result), entity_type, name)
-        else:
-            self.lg.debug('No membership for %s %s', entity_type, name)
-        self.graph[entity_type][name] = result
+                target_entity = self.checker._find_entity(target_type, target)
+                result.append(target_entity)
+                result.extend(self._build_graph(target_entity))
+        self.lg.debug('Found %d target entities for %s %s',
+                      len(result), entity_type, name)
+        self.graph[entity] = result
         return result
 
     def _query_membership(self):
-        self.graph = {'group': {}, 'usergroup': {}, 'hostgroup': {}}
+        self.graph = {}
         members = self._resolve_entities(self.args.members)
         targets = self._resolve_entities(self.args.targets)
         for entity in members:
-            memberof = self._build_graph(entity.entity_name, entity.name)
+            memberof = self._build_graph(entity)
             for target in targets:
-                if target.name in [i.name for i in memberof]:
+                if target in memberof:
                     self.lg.debug('%s IS a member of %s', entity, target)
                 else:
                     self.lg.debug('%s IS NOT a member of %s', entity, target)
