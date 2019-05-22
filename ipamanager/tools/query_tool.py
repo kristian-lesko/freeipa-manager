@@ -98,6 +98,6 @@ class QueryTool(FreeIPAManagerToolCore):
             memberof = self._build_graph(entity)
             for target in targets:
                 if target in memberof:
-                    self.lg.debug('%s IS a member of %s', entity, target)
+                    self.lg.info('%s IS a member of %s', entity, target)
                 else:
-                    self.lg.debug('%s IS NOT a member of %s', entity, target)
+                    self.lg.info('%s IS NOT a member of %s', entity, target)

@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright © 2017-2019, GoodData Corporation. All rights reserved.
 
+import logging
 import mock
 import os
 import pytest
@@ -24,7 +25,7 @@ class TestQueryTool(object):
                 '-m', 'user:user1', '-t', 'group:group2']
         with mock.patch('sys.argv', args):
             self.querytool = tool.QueryTool()
-        if re.match(r'test_(resolve|build)', method.func_name):
+        if re.match(r'test_(resolve|build|query)', method.func_name):
             self.querytool._load_config()
 
     def test_init(self):
@@ -112,3 +113,24 @@ class TestQueryTool(object):
                    'Found 2 target entities for group-one-users'),
                   ('QueryTool', 'DEBUG',
                    'Found 3 target entities for firstname.lastname'))
+
+    @log_capture(level=logging.INFO)
+    def test_query_membership(self, log):
+        self.querytool.args.members = [('user', 'firstname.lastname2'),
+                                       ('group', 'group-one-users')]
+        self.querytool.args.targets = [('group', 'group-one-users'),
+                                       ('group', 'group-two'),
+                                       ('group', 'group-three-users')]
+        self.querytool._query_membership()
+        log.check(
+            ('QueryTool', 'INFO',
+             'firstname.lastname2 IS NOT a member of group-one-users'),
+            ('QueryTool', 'INFO',
+             'firstname.lastname2 IS NOT a member of group-two'),
+            ('QueryTool', 'INFO',
+             'firstname.lastname2 IS a member of group-three-users'),
+            ('QueryTool', 'INFO',
+             'group-one-users IS NOT a member of group-one-users'),
+            ('QueryTool', 'INFO', 'group-one-users IS a member of group-two'),
+            ('QueryTool', 'INFO',
+             'group-one-users IS a member of group-three-users'))
