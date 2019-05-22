@@ -33,16 +33,15 @@ class QueryTool(FreeIPAManagerToolCore):
         member = actions.add_parser('member', parents=[common])
         member.add_argument(
             '-m', '--members', nargs='+', type=self._entity_type, default=[],
-            help='member entities (type:name format)')
+            required=True, help='member entities (type:name format)')
         member.add_argument(
             '-t', '--targets', nargs='+', type=self._entity_type, default=[],
-            help='target entities (type:name format)')
+            required=True, help='target entities (type:name format)')
         member.set_defaults(action='member')
 
         self.args = parser.parse_args()
-        if not self.args.members or not self.args.targets:
-            raise argparse.ArgumentParserError(
-                'At least one member & one target needed')
+        if not self.args.settings:
+            raise ManagerError('-s (--settings) must be provided')
         self.settings = load_settings(self.args.settings)
 
     def _entity_type(self, value):
@@ -59,6 +58,7 @@ class QueryTool(FreeIPAManagerToolCore):
         self.entities = ConfigLoader(self.args.config, self.settings).load()
         self.checker = IntegrityChecker(self.entities, self.settings)
         self.checker.check()
+        self.lg.info('Pre-query config load & checks finished')
 
     def _resolve_entities(self, entity_list):
         result = []

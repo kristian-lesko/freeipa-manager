@@ -1,0 +1,72 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright © 2017-2019, GoodData Corporation. All rights reserved.
+
+import argparse
+import json
+import logging
+import mock
+import os
+import pytest
+import requests_mock
+import sh
+from testfixtures import log_capture
+
+import ipamanager.tools.query_tool as tool
+testdir = os.path.dirname(__file__)
+
+modulename = 'ipamanager.tools.query_tool'
+CONFIG_CORRECT = os.path.join(testdir, '../freeipa-manager-config/correct')
+SETTINGS = os.path.join(testdir, '../freeipa-manager-config/settings.yaml')
+
+
+class TestQueryTool(object):
+    def setup_method(self, method):
+        args = ['query', 'member', CONFIG_CORRECT, '-s', SETTINGS,
+                '-m', 'user:user1', '-t', 'group:group2']
+        with mock.patch('sys.argv', args):
+            self.querytool = tool.QueryTool()
+
+    def test_init(self):
+        assert self.querytool.args.members == [('user', 'user1')]
+        assert self.querytool.args.targets == [('group', 'group2')]
+
+    def test_entity_type(self):
+        assert self.querytool._entity_type(
+            'sometype:somename') == ('sometype', 'somename')
+
+    def test_entity_type_error_too_few_values(self):
+        with pytest.raises(ValueError) as exc:
+            self.querytool._entity_type('sometype,somename')
+        assert exc.value[0] == 'need more than 1 value to unpack'
+
+    def test_entity_type_error_too_many_values(self):
+        with pytest.raises(ValueError) as exc:
+            self.querytool._entity_type('sometype:somename:something')
+        assert exc.value[0] == 'too many values to unpack'
+
+    def test_run(self):
+        self.querytool._load_config = mock.Mock()
+        self.querytool._query_membership = mock.Mock()
+        self.querytool.args.action = 'member'
+        self.querytool.run()
+        self.querytool._load_config.assert_called_with()
+        self.querytool._query_membership.assert_called_with()
+
+    @log_capture()
+    @mock.patch('%s.IntegrityChecker' % modulename)
+    @mock.patch('%s.ConfigLoader' % modulename)
+    def test_load_config(self, mock_loader, mock_checker, log):
+        self.querytool._load_config()
+        mock_loader.assert_called_with(
+            self.querytool.args.config, self.querytool.settings)
+        mock_load = mock_loader.return_value.load
+        mock_load.assert_called_with()
+        assert self.querytool.entities == mock_load.return_value
+        mock_checker.assert_called_with(
+            self.querytool.entities, self.querytool.settings)
+        mock_checker.return_value.check.assert_called_with()
+        log.check(
+            ('QueryTool', 'INFO', 'Running pre-query config load & checks'),
+            ('QueryTool', 'INFO', 'Pre-query config load & checks finished'))
