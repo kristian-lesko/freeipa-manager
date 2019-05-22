@@ -124,3 +124,11 @@ class QueryTool(FreeIPAManagerToolCore):
                 else:
                     queue.append(new_path)
         return paths
+
+
+def main():
+    QueryTool().run()
+
+
+if __name__ == '__main__':
+    main()

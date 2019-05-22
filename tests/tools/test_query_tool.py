@@ -135,8 +135,10 @@ class TestQueryTool(object):
             ('QueryTool', 'INFO',
              'firstname.lastname2 IS NOT a member of group-two'),
             ('QueryTool', 'INFO',
-             ('firstname.lastname2 IS a member of group-three-users; possible '
-              'paths: [user firstname.lastname2 -> group group-three-users]')),
+             ('firstname.lastname2 IS a member of group-three-users; '
+              'possible paths: [user firstname.lastname2 -> group '
+              'group-three-users; user firstname.lastname2 -> group '
+              'group-four-users -> group group-three-users]')),
             ('QueryTool', 'INFO',
              'group-one-users IS NOT a member of group-one-users'),
             ('QueryTool', 'INFO',
