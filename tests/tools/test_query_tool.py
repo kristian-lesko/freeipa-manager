@@ -14,6 +14,7 @@ import sh
 from testfixtures import log_capture
 
 import ipamanager.tools.query_tool as tool
+import ipamanager.entities as entities
 testdir = os.path.dirname(__file__)
 
 modulename = 'ipamanager.tools.query_tool'
@@ -70,3 +71,14 @@ class TestQueryTool(object):
         log.check(
             ('QueryTool', 'INFO', 'Running pre-query config load & checks'),
             ('QueryTool', 'INFO', 'Pre-query config load & checks finished'))
+
+    @log_capture()
+    def test_resolve_entities(self):
+        self.querytool._load_config()
+        entity_list = [('user', 'firstname.lastname'), ('group', 'group-two')]
+        result = self.querytool._resolve_entities(entity_list)
+        assert len(result) == 2
+        assert isinstance(result[0], entities.FreeIPAUser)
+        assert result[0].name == 'firstname.lastname'
+        assert isinstance(result[1], entities.FreeIPAUserGroup)
+        assert result[1].name == 'group-two'
