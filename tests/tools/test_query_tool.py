@@ -3,15 +3,10 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright © 2017-2019, GoodData Corporation. All rights reserved.
 
-import argparse
-import json
-import logging
 import mock
 import os
 import pytest
 import re
-import requests_mock
-import sh
 from testfixtures import log_capture
 
 import ipamanager.tools.query_tool as tool
