@@ -16,7 +16,7 @@ import argparse
 from ipamanager.config_loader import ConfigLoader
 from ipamanager.errors import ManagerError
 from ipamanager.integrity_checker import IntegrityChecker
-from ipamanager.utils import _args_common, load_settings
+from ipamanager.utils import _args_common, find_entity, load_settings
 from ipamanager.tools.core import FreeIPAManagerToolCore
 
 
@@ -63,7 +63,7 @@ class QueryTool(FreeIPAManagerToolCore):
     def _resolve_entities(self, entity_list):
         result = []
         for entity_type, entity_name in entity_list:
-            resolved = self.checker._find_entity(entity_type, entity_name)
+            resolved = find_entity(self.entities, entity_type, entity_name)
             if not resolved:
                 raise ManagerError('%s %s not found in config'
                                    % (entity_type, entity_name))
@@ -83,7 +83,7 @@ class QueryTool(FreeIPAManagerToolCore):
         memberof = entity.data_repo.get('memberOf', {})
         for target_type, targets in memberof.iteritems():
             for target in targets:
-                target_entity = self.checker._find_entity(target_type, target)
+                target_entity = find_entity(self.entities, target_type, target)
                 result.append(target_entity)
                 result.extend(self._build_graph(target_entity))
         self.lg.debug('Found %d target entities for %s', len(result), entity)
