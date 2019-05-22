@@ -14,12 +14,13 @@ A tool for querying entities for various purposes, like:
 import argparse
 
 from ipamanager.config_loader import ConfigLoader
+from ipamanager.errors import ManagerError
 from ipamanager.integrity_checker import IntegrityChecker
 from ipamanager.utils import _args_common, load_settings
 from ipamanager.tools.core import FreeIPAManagerToolCore
 
 
-class QueryTool(object):
+class QueryTool(FreeIPAManagerToolCore):
     """
     A query tool for inquiry operations over entities,
     like nested membership or security label checking.
@@ -39,7 +40,7 @@ class QueryTool(object):
         member.set_defaults(action='member')
 
         self.args = parser.parse_args()
-        if not args.members or not args.targets:
+        if not self.args.members or not self.args.targets:
             raise argparse.ArgumentParserError(
                 'At least one member & one target needed')
         self.settings = load_settings(self.args.settings)
@@ -73,7 +74,7 @@ class QueryTool(object):
         """
         Build membership graph of member entities' nested membership.
         """
-        # TODO capture membership path 
+        # TODO capture membership path
         result = self.graph.get(entity, [])
         if result:
             self.lg.debug('Membership for %s already calculated', entity)
@@ -85,8 +86,7 @@ class QueryTool(object):
                 target_entity = self.checker._find_entity(target_type, target)
                 result.append(target_entity)
                 result.extend(self._build_graph(target_entity))
-        self.lg.debug('Found %d target entities for %s %s',
-                      len(result), entity_type, name)
+        self.lg.debug('Found %d target entities for %s', len(result), entity)
         self.graph[entity] = result
         return result
 
