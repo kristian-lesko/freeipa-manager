@@ -25,7 +25,7 @@ class TestQueryTool(object):
                 '-m', 'user:user1', '-t', 'group:group2']
         with mock.patch('sys.argv', args):
             self.querytool = tool.QueryTool()
-        if re.match(r'test_(resolve|build|query)', method.func_name):
+        if re.match(r'test_(resolve|build|query|construct)', method.func_name):
             self.querytool._load_config()
 
     def test_init(self):
@@ -140,3 +140,35 @@ class TestQueryTool(object):
             ('QueryTool', 'INFO', 'group-one-users IS a member of group-two'),
             ('QueryTool', 'INFO',
              'group-one-users IS a member of group-three-users'))
+
+    @log_capture()
+    def test_construct_path(self):
+        self.querytool.graph = {}
+        self.querytool.predecessors = {}
+        self.querytool.args.members = [('user', 'firstname.lastname'),
+                                       ('group', 'group-one-users')]
+        self.querytool.args.targets = [('group', 'group-one-users'),
+                                       ('group', 'group-two'),
+                                       ('group', 'group-three-users')]
+        self.querytool._query_membership()
+        target = self.querytool.entities['group']['group-two']
+        member = self.querytool.entities['user']['firstname.lastname']
+        paths = self.querytool._construct_path(target, member)
+        assert len(paths) == 1
+        assert map(repr, paths[0]) == [
+            'user firstname.lastname', 'group group-one-users',
+            'group group-two']
+
+    @log_capture()
+    def test_construct_path_non_member(self):
+        self.querytool.graph = {}
+        self.querytool.predecessors = {}
+        self.querytool.args.members = [('user', 'firstname.lastname'),
+                                       ('group', 'group-one-users')]
+        self.querytool.args.targets = [('group', 'group-one-users'),
+                                       ('group', 'group-two'),
+                                       ('group', 'group-three-users')]
+        self.querytool._query_membership()
+        target = self.querytool.entities['group']['group-two']
+        member = self.querytool.entities['user']['firstname.lastname2']
+        assert self.querytool._construct_path(target, member) == []

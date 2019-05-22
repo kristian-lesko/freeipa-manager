@@ -12,6 +12,7 @@ A tool for querying entities for various purposes, like:
 """
 
 import argparse
+import collections
 
 from ipamanager.config_loader import ConfigLoader
 from ipamanager.errors import ManagerError
@@ -105,3 +106,19 @@ class QueryTool(FreeIPAManagerToolCore):
                     self.lg.info('%s IS a member of %s', entity, target)
                 else:
                     self.lg.info('%s IS NOT a member of %s', entity, target)
+
+    def _construct_path(self, target, member):
+        paths = []
+        queue = collections.deque([[target]])
+        while queue:
+            current = queue.popleft()
+            preds = self.predecessors.get(current[0], [])
+            print current, preds
+            for pred in preds:
+                new_path = [pred] + current
+                if pred == member:
+                    paths.append(new_path)
+                else:
+                    queue.append(new_path)
+            print queue
+        return paths
