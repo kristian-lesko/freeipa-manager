@@ -21,50 +21,26 @@ SETTINGS = os.path.join(testdir, '../freeipa-manager-config/settings.yaml')
 
 class TestQueryTool(object):
     def setup_method(self, method):
-        args = ['query', 'member', CONFIG_CORRECT, '-s', SETTINGS,
-                '-m', 'user:user1', '-t', 'group:group2']
-        with mock.patch('sys.argv', args):
-            self.querytool = tool.QueryTool()
-        if not re.match(r'^test_(entity|run|load)', method.func_name):
+        self.querytool = tool.QueryTool(CONFIG_CORRECT, SETTINGS)
+        if not re.match(r'^test_(run|load)', method.func_name):
             with LogCapture():
-                self.querytool._load_config()
+                self.querytool.load()
             self.querytool.graph = {}
             self.querytool.predecessors = {}
             self.querytool.paths = {}
 
-    def test_init(self):
-        assert self.querytool.args.members == [('user', 'user1')]
-        assert self.querytool.args.targets == [('group', 'group2')]
-
-    def test_entity_type(self):
-        assert self.querytool._entity_type(
-            'sometype:somename') == ('sometype', 'somename')
-
-    def test_entity_type_error_too_few_values(self):
-        with pytest.raises(ValueError) as exc:
-            self.querytool._entity_type('sometype,somename')
-        assert exc.value[0] == 'need more than 1 value to unpack'
-
-    def test_entity_type_error_too_many_values(self):
-        with pytest.raises(ValueError) as exc:
-            self.querytool._entity_type('sometype:somename:something')
-        assert exc.value[0] == 'too many values to unpack'
-
     def test_run(self):
-        self.querytool._load_config = mock.Mock()
         self.querytool._query_membership = mock.Mock()
-        self.querytool.args.action = 'member'
-        self.querytool.run()
-        self.querytool._load_config.assert_called_with()
-        self.querytool._query_membership.assert_called_with()
+        self.querytool.run('member', [], [])
+        self.querytool._query_membership.assert_called_with([], [])
 
     @log_capture()
     @mock.patch('%s.IntegrityChecker' % modulename)
     @mock.patch('%s.ConfigLoader' % modulename)
-    def test_load_config(self, mock_loader, mock_checker, log):
-        self.querytool._load_config()
+    def test_load(self, mock_loader, mock_checker, log):
+        self.querytool.load()
         mock_loader.assert_called_with(
-            self.querytool.args.config, self.querytool.settings)
+            self.querytool.config, self.querytool.settings)
         mock_load = mock_loader.return_value.load
         mock_load.assert_called_with()
         assert self.querytool.entities == mock_load.return_value
@@ -76,7 +52,6 @@ class TestQueryTool(object):
             ('QueryTool', 'INFO', 'Pre-query config load & checks finished'))
 
     def test_resolve_entities(self):
-        self.querytool._load_config()
         entity_list = [('user', 'firstname.lastname'), ('group', 'group-two')]
         result = self.querytool._resolve_entities(entity_list)
         assert len(result) == 2
@@ -88,7 +63,7 @@ class TestQueryTool(object):
     @log_capture()
     def test_build_graph(self, log):
         entity = self.querytool.entities['user']['firstname.lastname']
-        assert [repr(i) for i in self.querytool._build_graph(entity)] == [
+        assert [repr(i) for i in self.querytool.build_graph(entity)] == [
             'group group-one-users', 'group group-two',
             'group group-three-users']
         assert dict((repr(k), map(repr, v))
@@ -141,14 +116,13 @@ class TestQueryTool(object):
               'group-four-users -> group group-three-users]')))
 
     def test_query_membership(self):
-        self.querytool.args.members = [('user', 'firstname.lastname2'),
-                                       ('group', 'group-one-users')]
-        self.querytool.args.targets = [('group', 'group-one-users'),
-                                       ('group', 'group-two'),
-                                       ('group', 'group-three-users')]
+        members = [('user', 'firstname.lastname2'),
+                   ('group', 'group-one-users')]
+        targets = [('group', 'group-one-users'),
+                   ('group', 'group-two'),
+                   ('group', 'group-three-users')]
         self.querytool.check_membership = mock.Mock()
-        self.querytool._query_membership()
-        print self.querytool.check_membership.call_args_list[0].args
+        self.querytool._query_membership(members, targets)
         assert [tuple(repr(i) for i in j.args) for j
                 in self.querytool.check_membership.call_args_list] == [
             ('user firstname.lastname2', 'group group-one-users'),
@@ -185,3 +159,19 @@ class TestQueryTool(object):
         target = self.querytool.entities['group']['group-two']
         member = self.querytool.entities['user']['firstname.lastname2']
         assert self.querytool._construct_path(target, member) == []
+
+
+class TestQueryToolTopLevel(object):
+    def test_entity_type(self):
+        assert tool._entity_type(
+            'sometype:somename') == ('sometype', 'somename')
+
+    def test_entity_type_error_too_few_values(self):
+        with pytest.raises(ValueError) as exc:
+            tool._entity_type('sometype,somename')
+        assert exc.value[0] == 'need more than 1 value to unpack'
+
+    def test_entity_type_error_too_many_values(self):
+        with pytest.raises(ValueError) as exc:
+            tool._entity_type('sometype:somename:something')
+        assert exc.value[0] == 'too many values to unpack'
