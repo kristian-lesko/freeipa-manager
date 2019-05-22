@@ -28,11 +28,11 @@ class GitHubForwarder(FreeIPAManagerToolCore):
     """
     Responsible for updating FreeIPA server with changed configuration.
     """
-    def __init__(self):
+    def __init__(self, args=None):
         """
         Create a GitHub forwarder object.
         """
-        super(GitHubForwarder, self).__init__()
+        super(GitHubForwarder, self).__init__(args)
         self.name = socket.getfqdn().replace('.int.', '.')
         self.msg = 'Entity dump from %s' % self.name
         # configure the repo path to be used for all git command calls
@@ -166,7 +166,7 @@ class GitHubForwarder(FreeIPAManagerToolCore):
             else:
                 raise ManagerError('Creating PR failed: %s' % err)
 
-    def _parse_args(self):
+    def _parse_args(self, args=None):
         parser = argparse.ArgumentParser(description='GitHubForwarder')
         parser.add_argument('path', help='Config repository path')
         parser.add_argument('-b', '--branch', help='Branch to commit to',
@@ -193,7 +193,7 @@ class GitHubForwarder(FreeIPAManagerToolCore):
         parser_verbose.add_argument(
             '-d', '--debug', action='store_const',
             dest='loglevel', const=logging.DEBUG, help='Debug mode')
-        self.args = parser.parse_args()
+        self.args = parser.parse_args(args)
 
 
 def main():

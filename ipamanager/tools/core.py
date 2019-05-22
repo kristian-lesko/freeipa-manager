@@ -21,8 +21,8 @@ class FreeIPAManagerToolCore(object):
     """
     __metaclass__ = abc.ABCMeta
 
-    def __init__(self):
-        self._parse_args()
+    def __init__(self, args=None):
+        self._parse_args(args)
         init_logging(self.args.loglevel)
         self.lg = logging.getLogger(self.__class__.__name__)
 

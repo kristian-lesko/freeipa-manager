@@ -26,7 +26,7 @@ class QueryTool(FreeIPAManagerToolCore):
     A query tool for inquiry operations over entities,
     like nested membership or security label checking.
     """
-    def _parse_args(self):
+    def _parse_args(self, args=None):
         common = _args_common()
         parser = argparse.ArgumentParser(description='FreeIPA Manager Query')
         actions = parser.add_subparsers(help='query action to execute')
@@ -40,7 +40,7 @@ class QueryTool(FreeIPAManagerToolCore):
             required=True, help='target entities (type:name format)')
         member.set_defaults(action='member')
 
-        self.args = parser.parse_args()
+        self.args = parser.parse_args(args)
         if not self.args.settings:
             raise ManagerError('-s (--settings) must be provided')
         self.settings = load_settings(self.args.settings)
