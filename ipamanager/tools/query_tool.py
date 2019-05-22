@@ -100,10 +100,14 @@ class QueryTool(FreeIPAManagerToolCore):
         members = self._resolve_entities(self.args.members)
         targets = self._resolve_entities(self.args.targets)
         for entity in members:
-            memberof = self._build_graph(entity)
+            self._build_graph(entity)
             for target in targets:
-                if target in memberof:
-                    self.lg.info('%s IS a member of %s', entity, target)
+                paths = self._construct_path(target, entity)
+                if paths:
+                    self.lg.info(
+                        '%s IS a member of %s; possible paths: [%s]',
+                        entity, target, '; '.join(' -> '.join(
+                            repr(e) for e in path) for path in paths))
                 else:
                     self.lg.info('%s IS NOT a member of %s', entity, target)
 
@@ -113,12 +117,10 @@ class QueryTool(FreeIPAManagerToolCore):
         while queue:
             current = queue.popleft()
             preds = self.predecessors.get(current[0], [])
-            print current, preds
             for pred in preds:
                 new_path = [pred] + current
                 if pred == member:
                     paths.append(new_path)
                 else:
                     queue.append(new_path)
-            print queue
         return paths

@@ -8,7 +8,7 @@ import mock
 import os
 import pytest
 import re
-from testfixtures import log_capture
+from testfixtures import LogCapture, log_capture
 
 import ipamanager.tools.query_tool as tool
 import ipamanager.entities as entities
@@ -26,7 +26,8 @@ class TestQueryTool(object):
         with mock.patch('sys.argv', args):
             self.querytool = tool.QueryTool()
         if re.match(r'test_(resolve|build|query|construct)', method.func_name):
-            self.querytool._load_config()
+            with LogCapture():
+                self.querytool._load_config()
 
     def test_init(self):
         assert self.querytool.args.members == [('user', 'user1')]
@@ -134,12 +135,17 @@ class TestQueryTool(object):
             ('QueryTool', 'INFO',
              'firstname.lastname2 IS NOT a member of group-two'),
             ('QueryTool', 'INFO',
-             'firstname.lastname2 IS a member of group-three-users'),
+             ('firstname.lastname2 IS a member of group-three-users; possible '
+              'paths: [user firstname.lastname2 -> group group-three-users]')),
             ('QueryTool', 'INFO',
              'group-one-users IS NOT a member of group-one-users'),
-            ('QueryTool', 'INFO', 'group-one-users IS a member of group-two'),
             ('QueryTool', 'INFO',
-             'group-one-users IS a member of group-three-users'))
+             ('group-one-users IS a member of group-two; possible paths: '
+              '[group group-one-users -> group group-two]')),
+            ('QueryTool', 'INFO',
+             ('group-one-users IS a member of group-three-users; possible '
+              'paths: [group group-one-users -> group group-two -> '
+              'group group-three-users]')))
 
     @log_capture()
     def test_construct_path(self):
