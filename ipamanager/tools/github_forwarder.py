@@ -32,12 +32,13 @@ class GitHubForwarder(FreeIPAManagerToolCore):
         """
         Create a GitHub forwarder object.
         """
-        super(GitHubForwarder, self).__init__(args)
+        self._parse_args(args)
         self.name = socket.getfqdn().replace('.int.', '.')
         self.msg = 'Entity dump from %s' % self.name
         # configure the repo path to be used for all git command calls
         self.git = sh.git.bake(_cwd=self.args.path)
         self.changes = False
+        super(GitHubForwarder, self).__init__(args)
 
     def run(self):
         """

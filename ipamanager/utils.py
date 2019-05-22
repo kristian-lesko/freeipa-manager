@@ -39,6 +39,7 @@ ENTITY_CLASSES = [
 def init_logging(loglevel):
     lg = logging.getLogger()  # add handlers to all loggers
     lg.setLevel(logging.DEBUG)  # higher levels per handler below
+    lg.handlers = []  # clean previous loggers to avoid duplicity
 
     # stderr handler
     if loglevel == logging.DEBUG:
@@ -48,8 +49,11 @@ def init_logging(loglevel):
     handler_stderr = logging.StreamHandler(sys.stderr)
     handler_stderr.setFormatter(logging.Formatter(fmt=fmt))
     handler_stderr.setLevel(loglevel)
-    lg.addHandler(handler_stderr)
-    lg.debug('Stderr handler added to root logger')
+    if handler_stderr not in lg.handlers:
+        lg.addHandler(handler_stderr)
+        lg.debug('Stderr handler added to root logger')
+    else:
+        lg.debug('Stderr handler already added')
 
     # syslog output handler
     try:
@@ -59,8 +63,11 @@ def init_logging(loglevel):
         handler_syslog.setFormatter(
             logging.Formatter(fmt='ipamanager: %(message)s'))
         handler_syslog.setLevel(logging.INFO)
-        lg.addHandler(handler_syslog)
-        lg.debug('Syslog handler added to root logger')
+        if handler_syslog not in lg.handlers:
+            lg.addHandler(handler_syslog)
+            lg.debug('Syslog handler added to root logger')
+        else:
+            lg.debug('Syslog handler already added')
     except socket.error as err:
         lg.error('Syslog connection failed: %s', err)
 
