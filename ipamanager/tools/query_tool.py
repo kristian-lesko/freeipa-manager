@@ -74,7 +74,6 @@ class QueryTool(FreeIPAManagerToolCore):
         """
         Build membership graph of member entities' nested membership.
         """
-        # TODO capture membership path
         result = self.graph.get(entity, [])
         if result:
             self.lg.debug('Membership for %s already calculated', entity)
@@ -85,6 +84,10 @@ class QueryTool(FreeIPAManagerToolCore):
             for target in targets:
                 target_entity = find_entity(self.entities, target_type, target)
                 result.append(target_entity)
+                if target_entity in self.predecessors:
+                    self.predecessors[target_entity].append(entity)
+                else:
+                    self.predecessors[target_entity] = [entity]
                 result.extend(self._build_graph(target_entity))
         self.lg.debug('Found %d target entities for %s', len(result), entity)
         self.graph[entity] = result
@@ -92,6 +95,7 @@ class QueryTool(FreeIPAManagerToolCore):
 
     def _query_membership(self):
         self.graph = {}
+        self.predecessors = {}
         members = self._resolve_entities(self.args.members)
         targets = self._resolve_entities(self.args.targets)
         for entity in members:

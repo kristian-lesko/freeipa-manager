@@ -84,6 +84,7 @@ class TestQueryTool(object):
     @log_capture()
     def test_build_graph(self, log):
         self.querytool.graph = {}
+        self.querytool.predecessors = {}
         entity = self.querytool.entities['user']['firstname.lastname']
         assert [repr(i) for i in self.querytool._build_graph(entity)] == [
             'group group-one-users', 'group group-two',
@@ -97,6 +98,11 @@ class TestQueryTool(object):
             'user firstname.lastname': ['group group-one-users',
                                         'group group-two',
                                         'group group-three-users']}
+        assert dict((repr(k), map(repr, v))
+                    for k, v in self.querytool.predecessors.iteritems()) == {
+            'group group-one-users': ['user firstname.lastname'],
+            'group group-three-users': ['group group-two'],
+            'group group-two': ['group group-one-users']}
         log.check(('QueryTool', 'DEBUG',
                    'Calculating membership graph for firstname.lastname'),
                   ('QueryTool', 'DEBUG',
