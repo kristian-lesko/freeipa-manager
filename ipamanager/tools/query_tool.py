@@ -79,7 +79,7 @@ class QueryTool(FreeIPAManagerToolCore):
         if result:
             self.lg.debug('Membership for %s already calculated', entity)
             return result
-        self.lg.debug('Calculating membership graph for %s %s', entity)
+        self.lg.debug('Calculating membership graph for %s', entity)
         memberof = entity.data_repo.get('memberOf', {})
         for target_type, targets in memberof.iteritems():
             for target in targets:

@@ -9,6 +9,7 @@ import logging
 import mock
 import os
 import pytest
+import re
 import requests_mock
 import sh
 from testfixtures import log_capture
@@ -28,6 +29,8 @@ class TestQueryTool(object):
                 '-m', 'user:user1', '-t', 'group:group2']
         with mock.patch('sys.argv', args):
             self.querytool = tool.QueryTool()
+        if re.match(r'test_(resolve|build)', method.func_name):
+            self.querytool._load_config()
 
     def test_init(self):
         assert self.querytool.args.members == [('user', 'user1')]
@@ -72,7 +75,6 @@ class TestQueryTool(object):
             ('QueryTool', 'INFO', 'Running pre-query config load & checks'),
             ('QueryTool', 'INFO', 'Pre-query config load & checks finished'))
 
-    @log_capture()
     def test_resolve_entities(self):
         self.querytool._load_config()
         entity_list = [('user', 'firstname.lastname'), ('group', 'group-two')]
@@ -82,3 +84,36 @@ class TestQueryTool(object):
         assert result[0].name == 'firstname.lastname'
         assert isinstance(result[1], entities.FreeIPAUserGroup)
         assert result[1].name == 'group-two'
+
+    @log_capture()
+    def test_build_graph(self, log):
+        self.querytool.graph = {}
+        entity = self.querytool.entities['user']['firstname.lastname']
+        assert [repr(i) for i in self.querytool._build_graph(entity)] == [
+            'group group-one-users', 'group group-two',
+            'group group-three-users']
+        assert dict((repr(k), map(repr, v))
+                    for k, v in self.querytool.graph.iteritems()) == {
+            'group group-one-users': ['group group-two',
+                                      'group group-three-users'],
+            'group group-three-users': [],
+            'group group-two': ['group group-three-users'],
+            'user firstname.lastname': ['group group-one-users',
+                                        'group group-two',
+                                        'group group-three-users']}
+        log.check(('QueryTool', 'DEBUG',
+                   'Calculating membership graph for firstname.lastname'),
+                  ('QueryTool', 'DEBUG',
+                   'Calculating membership graph for group-one-users'),
+                  ('QueryTool', 'DEBUG',
+                   'Calculating membership graph for group-two'),
+                  ('QueryTool', 'DEBUG',
+                   'Calculating membership graph for group-three-users'),
+                  ('QueryTool', 'DEBUG',
+                   'Found 0 target entities for group-three-users'),
+                  ('QueryTool', 'DEBUG',
+                   'Found 1 target entities for group-two'),
+                  ('QueryTool', 'DEBUG',
+                   'Found 2 target entities for group-one-users'),
+                  ('QueryTool', 'DEBUG',
+                   'Found 3 target entities for firstname.lastname'))
