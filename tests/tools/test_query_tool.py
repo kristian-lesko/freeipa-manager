@@ -25,9 +25,12 @@ class TestQueryTool(object):
                 '-m', 'user:user1', '-t', 'group:group2']
         with mock.patch('sys.argv', args):
             self.querytool = tool.QueryTool()
-        if re.match(r'test_(resolve|build|query|construct)', method.func_name):
+        if not re.match(r'^test_(entity|run|load)', method.func_name):
             with LogCapture():
                 self.querytool._load_config()
+            self.querytool.graph = {}
+            self.querytool.predecessors = {}
+            self.querytool.paths = {}
 
     def test_init(self):
         assert self.querytool.args.members == [('user', 'user1')]
@@ -84,8 +87,6 @@ class TestQueryTool(object):
 
     @log_capture()
     def test_build_graph(self, log):
-        self.querytool.graph = {}
-        self.querytool.predecessors = {}
         entity = self.querytool.entities['user']['firstname.lastname']
         assert [repr(i) for i in self.querytool._build_graph(entity)] == [
             'group group-one-users', 'group group-two',
@@ -122,37 +123,43 @@ class TestQueryTool(object):
                    'Found 3 target entities for firstname.lastname'))
 
     @log_capture(level=logging.INFO)
-    def test_query_membership(self, log):
+    def test_check_membership(self, log):
+        member = self.querytool.entities['user']['firstname.lastname2']
+        target = self.querytool.entities['group']['group-three-users']
+        paths = self.querytool.check_membership(member, target)
+        assert len(paths) == 2
+        assert [repr(i) for i in paths[0]] == [
+            'user firstname.lastname2', 'group group-three-users']
+        assert [repr(i) for i in paths[1]] == [
+            'user firstname.lastname2', 'group group-four-users',
+            'group group-three-users']
+        log.check(
+            ('QueryTool', 'INFO',
+             ('firstname.lastname2 IS a member of group-three-users; '
+              'possible paths: [user firstname.lastname2 -> group '
+              'group-three-users; user firstname.lastname2 -> group '
+              'group-four-users -> group group-three-users]')))
+
+    def test_query_membership(self):
         self.querytool.args.members = [('user', 'firstname.lastname2'),
                                        ('group', 'group-one-users')]
         self.querytool.args.targets = [('group', 'group-one-users'),
                                        ('group', 'group-two'),
                                        ('group', 'group-three-users')]
+        self.querytool.check_membership = mock.Mock()
         self.querytool._query_membership()
-        log.check(
-            ('QueryTool', 'INFO',
-             'firstname.lastname2 IS NOT a member of group-one-users'),
-            ('QueryTool', 'INFO',
-             'firstname.lastname2 IS NOT a member of group-two'),
-            ('QueryTool', 'INFO',
-             ('firstname.lastname2 IS a member of group-three-users; '
-              'possible paths: [user firstname.lastname2 -> group '
-              'group-three-users; user firstname.lastname2 -> group '
-              'group-four-users -> group group-three-users]')),
-            ('QueryTool', 'INFO',
-             'group-one-users IS NOT a member of group-one-users'),
-            ('QueryTool', 'INFO',
-             ('group-one-users IS a member of group-two; possible paths: '
-              '[group group-one-users -> group group-two]')),
-            ('QueryTool', 'INFO',
-             ('group-one-users IS a member of group-three-users; possible '
-              'paths: [group group-one-users -> group group-two -> '
-              'group group-three-users]')))
+        print self.querytool.check_membership.call_args_list[0].args
+        assert [tuple(repr(i) for i in j.args) for j
+                in self.querytool.check_membership.call_args_list] == [
+            ('user firstname.lastname2', 'group group-one-users'),
+            ('user firstname.lastname2', 'group group-two'),
+            ('user firstname.lastname2', 'group group-three-users'),
+            ('group group-one-users', 'group group-one-users'),
+            ('group group-one-users', 'group group-two'),
+            ('group group-one-users', 'group group-three-users')]
 
     @log_capture()
     def test_construct_path(self):
-        self.querytool.graph = {}
-        self.querytool.predecessors = {}
         self.querytool.args.members = [('user', 'firstname.lastname'),
                                        ('group', 'group-one-users')]
         self.querytool.args.targets = [('group', 'group-one-users'),
@@ -169,8 +176,6 @@ class TestQueryTool(object):
 
     @log_capture()
     def test_construct_path_non_member(self):
-        self.querytool.graph = {}
-        self.querytool.predecessors = {}
         self.querytool.args.members = [('user', 'firstname.lastname'),
                                        ('group', 'group-one-users')]
         self.querytool.args.targets = [('group', 'group-one-users'),

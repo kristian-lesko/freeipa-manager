@@ -94,24 +94,32 @@ class QueryTool(FreeIPAManagerToolCore):
         self.graph[entity] = result
         return result
 
+    def check_membership(self, entity, target):
+        self._build_graph(entity)
+        paths = self._construct_path(target, entity)
+        if paths:
+            self.lg.info(
+                '%s IS a member of %s; possible paths: [%s]',
+                entity, target, '; '.join(' -> '.join(
+                    repr(e) for e in path) for path in paths))
+        else:
+            self.lg.info('%s IS NOT a member of %s', entity, target)
+        return paths
+
     def _query_membership(self):
         self.graph = {}
         self.predecessors = {}
+        self.paths = {}
         members = self._resolve_entities(self.args.members)
         targets = self._resolve_entities(self.args.targets)
         for entity in members:
-            self._build_graph(entity)
             for target in targets:
-                paths = self._construct_path(target, entity)
-                if paths:
-                    self.lg.info(
-                        '%s IS a member of %s; possible paths: [%s]',
-                        entity, target, '; '.join(' -> '.join(
-                            repr(e) for e in path) for path in paths))
-                else:
-                    self.lg.info('%s IS NOT a member of %s', entity, target)
+                self.check_membership(entity, target)
 
     def _construct_path(self, target, member):
+        if (member, target) in self.paths:
+            self.lg.debug('Using cached paths for %s -> %s', member, target)
+            return self.paths[(member, target)]
         paths = []
         queue = collections.deque([[target]])
         while queue:
@@ -123,6 +131,8 @@ class QueryTool(FreeIPAManagerToolCore):
                     paths.append(new_path)
                 else:
                     queue.append(new_path)
+        self.paths[(member, target)] = paths
+        self.lg.debug('Found %d paths %s -> %s', len(paths), member, target)
         return paths
 
 
