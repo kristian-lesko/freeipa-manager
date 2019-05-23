@@ -66,15 +66,15 @@ class TestQueryTool(object):
         assert {repr(i) for i in self.querytool.build_graph(entity)} == {
             'group group-one-users', 'group group-two',
             'group group-three-users'}
-        assert dict((repr(k), map(repr, v))
+        assert dict((repr(k), set(map(repr, v)))
                     for k, v in self.querytool.graph.iteritems()) == {
-            'group group-one-users': ['group group-two',
-                                      'group group-three-users'],
-            'group group-three-users': [],
-            'group group-two': ['group group-three-users'],
-            'user firstname.lastname': ['group group-one-users',
+            'group group-one-users': {'group group-two',
+                                      'group group-three-users'},
+            'group group-three-users': set(),
+            'group group-two': {'group group-three-users'},
+            'user firstname.lastname': {'group group-one-users',
                                         'group group-two',
-                                        'group group-three-users']}
+                                        'group group-three-users'}}
         assert dict((repr(k), map(repr, v))
                     for k, v in self.querytool.predecessors.iteritems()) == {
             'group group-one-users': ['user firstname.lastname'],

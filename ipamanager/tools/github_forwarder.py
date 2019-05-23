@@ -38,7 +38,7 @@ class GitHubForwarder(FreeIPAManagerToolCore):
         # configure the repo path to be used for all git command calls
         self.git = sh.git.bake(_cwd=self.args.path)
         self.changes = False
-        super(GitHubForwarder, self).__init__(args)
+        super(GitHubForwarder, self).__init__(self.args.loglevel)
 
     def run(self):
         """
