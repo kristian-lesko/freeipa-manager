@@ -318,10 +318,12 @@ class TestUtils(object):
     def test_init_logging_no_syslog(self):
         logging.getLogger().handlers = []  # clean left-overs of previous tests
         with mock.patch('ipamanager.utils.logging.handlers') as mock_handlers:
-            mock_handlers.SysLogHandler.side_effect = socket.error(
-                'No such file or directory')
-            with LogCapture() as log:
-                utils.init_logging(logging.INFO)
+            with mock.patch('ipamanager.utils._check_handler') as mock_check:
+                mock_check.return_value = False
+                mock_handlers.SysLogHandler.side_effect = socket.error(
+                    'No such file or directory')
+                with LogCapture() as log:
+                    utils.init_logging(logging.INFO)
             log.check(
                 ('root', 'DEBUG', 'Stderr handler added to root logger'),
                 ('root', 'ERROR',
